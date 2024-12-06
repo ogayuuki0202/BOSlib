@@ -80,11 +80,11 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
         bin_ref = ib._biner_thresh(ar_ref, thresh)
         bin_exp = ib._biner_thresh(ar_exp, thresh)
 
-        print("Binarization",bin_ref.shape,bin_exp.shape)
+        #print("Binarization",bin_ref.shape,bin_exp.shape)
     elif binarization =="HPfilter":
         bin_ref=ib._biner_HP(ar_ref, freq)
         bin_exp=ib._biner_HP(ar_exp, freq)
-        print("Binarization",bin_ref.shape,bin_exp.shape)
+        #print("Binarization",bin_ref.shape,bin_exp.shape)
     else:
         raise ValueError("Binarization is thresh or HPfilter")
     
@@ -92,25 +92,25 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
     ref_u, ref_d = ib._bin_indexer(bin_ref)
     ref_u = np.nan_to_num(ref_u)
     ref_d = np.nan_to_num(ref_d)
-    print("bin_indexer_ref",ref_u.shape,ref_d.shape)
+    #print("bin_indexer_ref",ref_u.shape,ref_d.shape)
     # Detect the coordinates of the color boundaries in the binarized experimental image
     # u represents the upper boundary of the white stripe, d represents the lower boundary
     exp_u, exp_d = ib._bin_indexer(bin_exp)
     exp_u = np.nan_to_num(exp_u)
     exp_d = np.nan_to_num(exp_d)
-    print("bin_indexer_exp",exp_u.shape,exp_d.shape)
+    #print("bin_indexer_exp",exp_u.shape,exp_d.shape)
 
     # Remove data with abnormally large displacements as noise
     ref_u, exp_u = ib._noize_reducer_2(ref_u, exp_u, 10)
     ref_d, exp_d = ib._noize_reducer_2(ref_d, exp_d, 10)
-    print("noize_reducer_2",exp_u.shape,exp_d.shape)
-    print("noize_reducer_2",ref_u.shape,ref_d.shape)
+    #print("noize_reducer_2",exp_u.shape,exp_d.shape)
+    #print("noize_reducer_2",ref_u.shape,ref_d.shape)
     
     # Combine the upper and lower boundary data to calculate the center of the stripe
     ref = ib._mixing(ref_u, ref_d)
     exp = ib._mixing(exp_u, exp_d)
 
-    print("mixing",ref.shape,exp.shape)
+    #print("mixing",ref.shape,exp.shape)
     
     # Calculate displacement (upward displacement is positive)
     diff = -(exp - ref)
@@ -118,7 +118,7 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
     # Rearrange the displacement values into the correct positions and interpolate gaps
     diff_comp = ib._complementer(ref, diff)
 
-    print("complementer",diff_comp.shape)
+    #print("complementer",diff_comp.shape)
     
     # Subtract the overall background movement by dividing by the mean displacement
     diff_comp = diff_comp - np.nanmean(diff_comp[0:1000, 10:100])
