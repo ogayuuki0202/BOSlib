@@ -129,65 +129,223 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
 
     return diff_comp
 
-def S_BOS(ref_array : np.ndarray, exp_array : np.ndarray):
+def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray):
+    """
+    Compute the phase difference and corresponding displacement (delta_h) 
+    between reference and experimental signal arrays using a 1D Background 
+    Oriented Schlieren (BOS) process.
+
+    Parameters:
+    -----------
+    ref_array : np.ndarray
+        2D numpy array containing reference signals, where each column is a distinct signal.
+    exp_array : np.ndarray
+        2D numpy array containing experimental signals, matching the dimensions of ref_array.
+
+    Returns:
+    --------
+    delta_h : np.ndarray
+        2D numpy array representing the displacement computed from the phase differences.
+    """
+    
     def freq_finder(sig):
+        """
+        Identify the dominant frequency in the signal using the FFT.
+        
+        Parameters:
+        -----------
+        sig : np.ndarray
+            1D numpy array representing a signal.
+            
+        Returns:
+        --------
+        float
+            The dominant frequency (above 0.01 Hz) based on amplitude.
+        """
+        # Compute FFT frequencies
         freq = np.fft.fftfreq(sig.shape[0])
+        # Compute FFT of the signal and normalize the amplitude
         fk = np.fft.fft(sig)
         fk = abs(fk / (sig.shape[0] / 2))
+        # Combine frequencies and amplitudes into a DataFrame
         fk_df = pd.DataFrame(np.vstack([freq, fk]).T, columns=["freq", "amp"])
+        # Sort DataFrame by frequency and keep only non-negative frequencies
         fk_df = fk_df.sort_values('freq')
         fk_df = fk_df[fk_df["freq"] >= 0]
+        # Select frequencies above 0.01 Hz and sort by amplitude in descending order
         freq_search = fk_df[fk_df["freq"] >= 0.01].sort_values('amp', ascending=False)
+        # Return the frequency corresponding to the highest amplitude
         return freq_search.iloc[0, 0]
 
     def bandpass(x, fa, fb):
-        gpass, gstop = 2, 60
+        """
+        Apply a bandpass Butterworth filter to the signal.
+        
+        Parameters:
+        -----------
+        x : np.ndarray
+            Input signal.
+        fa : float
+            Lower cutoff frequency multiplier.
+        fb : float
+            Upper cutoff frequency multiplier.
+            
+        Returns:
+        --------
+        np.ndarray
+            The bandpass-filtered signal.
+        """
+        gpass, gstop = 2, 60  # Passband and stopband gains (dB)
         fp, fs = np.array([fa, fb]), np.array([fa / 2, fb * 2])
-        fn = 1 / 2
+        fn = 1 / 2  # Nyquist frequency (assuming a normalized sample rate)
         wp, ws = fp / fn, fs / fn
+        # Determine the minimum filter order that meets the specifications
         N, Wn = signal.buttord(wp, ws, gpass, gstop)
+        # Get the filter coefficients for a Butterworth filter
         b, a = signal.butter(N, Wn, "band")
+        # Apply the filter forward and backward to avoid phase distortion
         return signal.filtfilt(b, a, x)
 
     def lowpass(x, lowcut):
-        order, nyq = 8, 0.5 * 1
+        """
+        Apply a lowpass Butterworth filter to the signal.
+        
+        Parameters:
+        -----------
+        x : np.ndarray
+            Input signal.
+        lowcut : float
+            The low cutoff frequency.
+            
+        Returns:
+        --------
+        np.ndarray
+            The lowpass-filtered signal.
+        """
+        order, nyq = 8, 0.5 * 1  # Order and Nyquist frequency (assuming sample rate = 1)
         low = lowcut / nyq
+        # Get the filter coefficients for a lowpass Butterworth filter
         b, a = signal.butter(order, low, btype='low')
+        # Apply the filter with zero-phase distortion
         return signal.filtfilt(b, a, x)
 
     def signal_separate(sig, f1):
+        """
+        Separate the signal into a constant (mean) component and a bandpass-filtered component.
+        
+        Parameters:
+        -----------
+        sig : np.ndarray
+            Input signal.
+        f1 : float
+            Base frequency used to define the bandpass range.
+            
+        Returns:
+        --------
+        np.ndarray
+            2D array where the first column is the signal mean and the second column is the bandpass-filtered signal.
+        """
         sig_f = np.zeros([sig.shape[0], 2])
+        # First column: constant value equal to the mean of the signal
         sig_f[:, 0] = sig.mean()
+        # Second column: bandpass filtered signal using a frequency window around f1
         sig_f[:, 1] = bandpass(sig, f1 * 0.7, f1 * 1.5)
         return sig_f
 
     def signal_scale_normalize(sig, f):
+        """
+        Normalize the signal based on a rolling maximum amplitude and add a sine correction.
+        
+        Parameters:
+        -----------
+        sig : np.ndarray
+            Input signal.
+        f : float
+            Frequency used to calculate the sine correction.
+            
+        Returns:
+        --------
+        np.ndarray
+            The normalized signal.
+        """
+        # Calculate the rolling maximum absolute value over a window of 0.5/f samples
         sig_abs = np.array(pd.Series(abs(sig)).rolling(int(0.5 / f), center=True).max())
+        # Suppress parts of the signal where the amplitude is significantly below the mean
         sig[sig_abs < np.nanmean(sig_abs) * 0.5] = 0
         y = np.arange(0, sig.shape[0], 1)
+        # Generate a sine wave for phase correction
         S = np.sin(2 * np.pi * f * y)
+        # Create a correction term based on the amplitude threshold
         S1 = (1 - (sig_abs > np.nanmean(sig_abs * 0.5))) * S
+        # Add the correction term to the signal
         sig = sig + S1
+        # Avoid division by very small numbers
         sig_abs[sig_abs < np.nanmean(sig_abs * 0.5)] = 1
+        # Normalize the signal
         sig_norm = sig / sig_abs
         sig_norm[np.isnan(sig_norm)] = 0
         return sig_norm
 
     def phase_calculate(ref, exp, f1):
-        sin_ref, cos_ref = ref, np.gradient(ref) / (f1 * 2 * np.pi)
-        cos_phi, sin_phi = lowpass(sin_ref * exp, f1), lowpass(cos_ref * exp, f1)
+        """
+        Calculate the phase difference between the reference and experimental signals.
+        
+        Parameters:
+        -----------
+        ref : np.ndarray
+            Normalized reference signal.
+        exp : np.ndarray
+            Normalized experimental signal.
+        f1 : float
+            Base frequency.
+            
+        Returns:
+        --------
+        np.ndarray
+            The phase difference calculated using lowpass filtered sine and cosine components.
+        """
+        # Compute sine and its gradient (approximation for cosine)
+        sin_ref = ref
+        cos_ref = np.gradient(ref) / (f1 * 2 * np.pi)
+        # Compute lowpass filtered products to obtain sine and cosine components of the phase difference
+        cos_phi = lowpass(sin_ref * exp, f1)
+        sin_phi = lowpass(cos_ref * exp, f1)
+        # Calculate the phase difference using arctan2 for correct quadrant determination
         return np.arctan2(sin_phi, cos_phi)
 
     def phase_1DBOS_process(sig_ref, sig_exp, f1):
+        """
+        Process a pair of reference and experimental signals to compute the phase difference.
+        
+        Parameters:
+        -----------
+        sig_ref : np.ndarray
+            Single column from the reference signal array.
+        sig_exp : np.ndarray
+            Corresponding column from the experimental signal array.
+        f1 : float
+            Base frequency obtained from the reference array.
+            
+        Returns:
+        --------
+        np.ndarray
+            The phase difference between the processed reference and experimental signals.
+        """
+        # Separate the signal into mean and bandpass-filtered components and normalize them
         separate_sig_ref = signal_scale_normalize(signal_separate(sig_ref, f1)[:, 1], f1)
         separate_sig_exp = signal_scale_normalize(signal_separate(sig_exp, f1)[:, 1], f1)
+        # Calculate the phase difference between the normalized signals
         return phase_calculate(separate_sig_ref, separate_sig_exp, f1)
 
+    # Determine the dominant frequency from a representative column (column 100) of the reference array
     f1 = freq_finder(ref_array[:, 100])
+    # Initialize a 2D array to store phase differences for each column
     phi_2D = np.zeros([ref_array.shape[0], ref_array.shape[1]]).astype("float64")
     
+    # Process each column of the reference and experimental arrays
     for x in range(ref_array.shape[1]):
         phi_2D[:, x] = phase_1DBOS_process(ref_array[:, x], exp_array[:, x], f1)
     
+    # Convert phase differences into displacement by dividing by (2*pi*f1)
     delta_h = phi_2D / (2 * np.pi * f1)
     return delta_h
