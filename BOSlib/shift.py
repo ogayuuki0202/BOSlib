@@ -1,7 +1,11 @@
 from skimage.metrics import structural_similarity as ssm
 import numpy as np
 from PIL import Image
+from scipy import signal
+import pandas as pd
+
 import BOSlib.shift_utils as ib
+
 
 def SSIM(ref_array : np.ndarray, exp_array : np.ndarray):
     """
@@ -124,3 +128,66 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
     diff_comp = diff_comp - np.nanmean(diff_comp[0:1000, 10:100])
 
     return diff_comp
+
+def S_BOS(ref_array : np.ndarray, exp_array : np.ndarray):
+    def freq_finder(sig):
+        freq = np.fft.fftfreq(sig.shape[0])
+        fk = np.fft.fft(sig)
+        fk = abs(fk / (sig.shape[0] / 2))
+        fk_df = pd.DataFrame(np.vstack([freq, fk]).T, columns=["freq", "amp"])
+        fk_df = fk_df.sort_values('freq')
+        fk_df = fk_df[fk_df["freq"] >= 0]
+        freq_search = fk_df[fk_df["freq"] >= 0.01].sort_values('amp', ascending=False)
+        return freq_search.iloc[0, 0]
+
+    def bandpass(x, fa, fb):
+        gpass, gstop = 2, 60
+        fp, fs = np.array([fa, fb]), np.array([fa / 2, fb * 2])
+        fn = 1 / 2
+        wp, ws = fp / fn, fs / fn
+        N, Wn = signal.buttord(wp, ws, gpass, gstop)
+        b, a = signal.butter(N, Wn, "band")
+        return signal.filtfilt(b, a, x)
+
+    def lowpass(x, lowcut):
+        order, nyq = 8, 0.5 * 1
+        low = lowcut / nyq
+        b, a = signal.butter(order, low, btype='low')
+        return signal.filtfilt(b, a, x)
+
+    def signal_separate(sig, f1):
+        sig_f = np.zeros([sig.shape[0], 2])
+        sig_f[:, 0] = sig.mean()
+        sig_f[:, 1] = bandpass(sig, f1 * 0.7, f1 * 1.5)
+        return sig_f
+
+    def signal_scale_normalize(sig, f):
+        sig_abs = np.array(pd.Series(abs(sig)).rolling(int(0.5 / f), center=True).max())
+        sig[sig_abs < np.nanmean(sig_abs) * 0.5] = 0
+        y = np.arange(0, sig.shape[0], 1)
+        S = np.sin(2 * np.pi * f * y)
+        S1 = (1 - (sig_abs > np.nanmean(sig_abs * 0.5))) * S
+        sig = sig + S1
+        sig_abs[sig_abs < np.nanmean(sig_abs * 0.5)] = 1
+        sig_norm = sig / sig_abs
+        sig_norm[np.isnan(sig_norm)] = 0
+        return sig_norm
+
+    def phase_calculate(ref, exp, f1):
+        sin_ref, cos_ref = ref, np.gradient(ref) / (f1 * 2 * np.pi)
+        cos_phi, sin_phi = lowpass(sin_ref * exp, f1), lowpass(cos_ref * exp, f1)
+        return np.arctan2(sin_phi, cos_phi)
+
+    def phase_1DBOS_process(sig_ref, sig_exp, f1):
+        separate_sig_ref = signal_scale_normalize(signal_separate(sig_ref, f1)[:, 1], f1)
+        separate_sig_exp = signal_scale_normalize(signal_separate(sig_exp, f1)[:, 1], f1)
+        return phase_calculate(separate_sig_ref, separate_sig_exp, f1)
+
+    f1 = freq_finder(ref_array[:, 100])
+    phi_2D = np.zeros([ref_array.shape[0], ref_array.shape[1]]).astype("float64")
+    
+    for x in range(ref_array.shape[1]):
+        phi_2D[:, x] = phase_1DBOS_process(ref_array[:, x], exp_array[:, x], f1)
+    
+    delta_h = phi_2D / (2 * np.pi * f1)
+    return delta_h
