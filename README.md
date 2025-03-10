@@ -34,7 +34,7 @@ Please see our [Documentation](https://ogayuuki0202.github.io/BOSlib/index.html)
 ## Getting Started
 Here's a quick example of using BOSlib for flow visualization:
 1. [3D quantitative visualization and measurement using Abel transform](https://colab.research.google.com/drive/1-Z0ufw8g7u86d0KtyjZTSHDbtDhhknmj?usp=sharing)
-2. [3D quantitative visualization and measurement using ARTmethod(CT)]()
+2. [Methods to Calculate the dispalacement of two images]()
 
 ## Contributors
 - [Yuuki Ogasawara](https://orcid.org/0009-0004-0350-2185)
