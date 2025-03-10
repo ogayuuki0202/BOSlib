@@ -29,11 +29,11 @@ or clone using git
 
 ## Methods
 
-Please see our [Documentation](https://ogayuuki0202.github.io/BOSlib/index.html](https://foamy-trilby-a77.notion.site/BOSlib-Documentation-1b2338a536ad8050ac53ee2d606b68e5).
+Please see our [Documentation](https://foamy-trilby-a77.notion.site/BOSlib-Documentation-1b2338a536ad8050ac53ee2d606b68e5)
 
 ## Getting Started
 Here's a quick example of using BOSlib for flow visualization:
-1. [Methods to Calculate the dispalacement of two images]()
+1. [Methods to Calculate the dispalacement of two images](https://colab.research.google.com/drive/18d4jUFsSalQJzqCYRcfaIQB8JM66kD0i?usp=sharing)
 2. [3D quantitative visualization and measurement using Abel transform](https://colab.research.google.com/drive/1-Z0ufw8g7u86d0KtyjZTSHDbtDhhknmj?usp=sharing)
 
 
