@@ -129,7 +129,7 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
 
     return diff_comp
 
-def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray):
+def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray,freq_sample_area):
     """
     Compute the phase difference and corresponding displacement (delta_h) 
     between reference and experimental signal arrays using a 1D Background 
@@ -338,7 +338,7 @@ def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray):
         return phase_calculate(separate_sig_ref, separate_sig_exp, f1)
 
     # Determine the dominant frequency from a representative column (column 100) of the reference array
-    f1 = freq_finder(ref_array[:, 100])
+    f1 = freq_finder(ref_array[freq_sample_area])
     # Initialize a 2D array to store phase differences for each column
     phi_2D = np.zeros([ref_array.shape[0], ref_array.shape[1]]).astype("float64")
     

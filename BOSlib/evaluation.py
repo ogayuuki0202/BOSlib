@@ -137,7 +137,7 @@ import mpl_toolkits.axes_grid1
 #         neighbor_density_array = np.asarray(neighbor_density)
 #         return neighbor_density_array
   
-# def _normalize(self,data):
+# def _normalize(data):
 #     """
 #     Min-Maxスケーリングを使用してデータを正規化します。
 #     """
