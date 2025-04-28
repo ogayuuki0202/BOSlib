@@ -29,7 +29,7 @@ or clone using git
 
 ## Methods
 
-Please see our [Documentation](https://ogayuuki0202.github.io/BOSlib/index.html).
+Please see our [Documentation]([https://ogayuuki0202.github.io/BOSlib/index.html](https://foamy-trilby-a77.notion.site/BOSlib-Documentation-1b2338a536ad8050ac53ee2d606b68e5?pvs=4)).
 
 ## Getting Started
 Here's a quick example of using BOSlib for flow visualization:
