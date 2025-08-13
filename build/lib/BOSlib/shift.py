@@ -129,25 +129,38 @@ def SP_BOS(ref_array : np.ndarray, exp_array : np.ndarray, binarization : str ="
 
     return diff_comp
 
-def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray,freq_sample_area):
+def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray,freq_sample_row : int = 0):
     """
-    Compute the phase difference and corresponding displacement (delta_h) 
-    between reference and experimental signal arrays using a 1D Background 
-    Oriented Schlieren (BOS) process.
+    Compute a 1D BOS displacement field by estimating phase differences
+    between reference and experimental stripe signals.
 
-    Parameters:
-    -----------
-    ref_array : np.ndarray
-        2D numpy array containing reference signals, where each column is a distinct signal.
-    exp_array : np.ndarray
-        2D numpy array containing experimental signals, matching the dimensions of ref_array.
+    This function first identifies the dominant stripe frequency via FFT
+    from a representative row (`freq_sample_area`) of `ref_array`. Then for
+    each column signal it:
+      1. Bandpass-filters around the base frequency.
+      2. Normalizes amplitude and applies a sine-based phase correction.
+      3. Calculates the local phase difference via lowpass filtered
+         sine/cosine products.
+      4. Converts phase shifts to physical displacement values.
 
-    Returns:
-    --------
-    delta_h : np.ndarray
-        2D numpy array representing the displacement computed from the phase differences.
+    Parameters
+    ----------
+    ref_array : np.ndarray, shape (M, N)
+        Reference image signals, with M samples (rows) and N separate
+        stripe‐signal columns.
+    exp_array : np.ndarray, shape (M, N)
+        Experimental image signals matching the dimensions of `ref_array`.
+    freq_sample_row : int
+        Row index in `ref_array` used to detect the dominant stripe frequency
+        for filtering and phase calculation.
+
+    Returns
+    -------
+    delta_h : np.ndarray, shape (M, N)
+        Displacement field (Δh) computed from the phase differences between
+        each column of `ref_array` and `exp_array`. Units are cycles/(2π·f),
+        where f is the dominant stripe frequency.
     """
-    
     def freq_finder(sig):
         """
         Identify the dominant frequency in the signal using the FFT.
@@ -338,7 +351,7 @@ def S_BOS(ref_array: np.ndarray, exp_array: np.ndarray,freq_sample_area):
         return phase_calculate(separate_sig_ref, separate_sig_exp, f1)
 
     # Determine the dominant frequency from a representative column (column 100) of the reference array
-    f1 = freq_finder(ref_array[freq_sample_area])
+    f1 = freq_finder(ref_array[:,freq_sample_row])
     # Initialize a 2D array to store phase differences for each column
     phi_2D = np.zeros([ref_array.shape[0], ref_array.shape[1]]).astype("float64")
     

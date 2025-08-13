@@ -75,13 +75,11 @@ def abel_transform(angle: np.ndarray, center: float, winy0: int, winy1: int, win
 
     return ans
 
-def ART(sinogram, mu, e, reconstruction_angle : float,circle=True):
+def SIRT(sinogram, mu, e, reconstruction_angle : float,circle=True):
     """
-    Perform Algebraic Reconstruction Technique (ART) to reconstruct images from a sinogram.
+    Perform Simultaneous Reconstruction Technique (SIRT) to reconstruct images from a sinogram.
 
-    The ART method iteratively updates pixel values to minimize the error between projections
-    and the input sinogram, facilitating accurate image reconstruction from projections.
-
+    
     Parameters
     ----------
     sinogram : np.ndarray
